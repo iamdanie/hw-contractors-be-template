@@ -132,7 +132,7 @@ app.post('/jobs/:id/pay', getProfile, async (req, res) => {
       res.json(result)
     }
   } catch (e) {
-    console.error(e, e.message)
+    console.error(e)
     res.status(500).end()
   }
 })
@@ -193,6 +193,7 @@ app.get('/admin/best-profession', getProfile, async (req, res) => {
 
   const sum = await Profile.findAll({
     attributes: ['profession'],
+    where: { type: 'contractor' },
     include: {
       model: Contract,
       as: 'Contractor',
@@ -223,4 +224,37 @@ app.get('/admin/best-profession', getProfile, async (req, res) => {
 
   res.json(max)
 })
+
+app.get('/admin/best-clients', getProfile, async (req, res) => {
+  const { Contract, Job, Profile } = req.app.get('models')
+  const { start, end, limit = 2 } = req.query || { limit: 2 }
+  const dateQueries = []
+  if (start) {
+    dateQueries.push({ paymentDate: { [Op.gte]: new Date(start) } })
+  }
+  if (end) {
+    dateQueries.push({ paymentDate: { [Op.lte]: new Date(end) } })
+  }
+
+  const sum = await Profile.findAll({
+    attributes: [['id', 'userId'], 'firstName', 'lastName'],
+    where: { type: 'client' },
+    include: {
+      model: Contract,
+      as: 'Client',
+      attributes: ['clientId'],
+      include: {
+        model: Job,
+        where: { [Op.and]: [{ paid: true }, ...dateQueries] },
+        attributes: [
+          [sequelize.fn('SUM', sequelize.col('price')), 'totalPaid'],
+        ],
+      },
+    },
+    group: ['userId'],
+  })
+
+  res.json(sum.slice(0, limit))
+})
+
 module.exports = app
