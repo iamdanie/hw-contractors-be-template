@@ -179,4 +179,48 @@ app.post('/balances/deposit/:id', getProfile, async (req, res) => {
     res.status(500).end()
   }
 })
+
+app.get('/admin/best-profession', getProfile, async (req, res) => {
+  const { Contract, Job, Profile } = req.app.get('models')
+  const { start, end } = req.query || {}
+  const dateQueries = []
+  if (start) {
+    dateQueries.push({ paymentDate: { [Op.gte]: new Date(start) } })
+  }
+  if (end) {
+    dateQueries.push({ paymentDate: { [Op.lte]: new Date(end) } })
+  }
+
+  const sum = await Profile.findAll({
+    attributes: ['profession'],
+    include: {
+      model: Contract,
+      as: 'Contractor',
+      attributes: ['contractorId'],
+      include: {
+        model: Job,
+        where: { [Op.and]: [{ paid: true }, ...dateQueries] },
+        attributes: [
+          [sequelize.fn('SUM', sequelize.col('price')), 'totalPaid'],
+        ],
+      },
+    },
+    group: ['profession'],
+  })
+
+  const max = sum.reduce((acc, curr) => {
+    const currentEarned =
+      curr.Contractor?.[0]?.Jobs?.[0]?.dataValues?.totalPaid ?? 0
+    if (!acc?.profession || currentEarned > acc?.totalEarned) {
+      return {
+        profession: curr.profession,
+        totalEarned: currentEarned,
+      }
+    }
+
+    return acc
+  }, {})
+
+  res.json(max)
+})
 module.exports = app
