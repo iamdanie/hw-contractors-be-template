@@ -1,48 +1,12 @@
 const express = require('express')
 const { getProfile } = require('../middleware/getProfile')
+const { createDeposit } = require('./controller')
 const router = express.Router()
 
 /**
  * Deposits money into the the the balance of a client
  * @returns user who received the deposit
  */
-router.post('/deposit/:id', getProfile, async (req, res) => {
-  try {
-    const { Contract, Job, Profile } = req.app.get('models')
-    const { id: recipientId } = req.params
-    const { amount } = req?.body ?? { amount: 0 }
-
-    if (!amount) {
-      res.status(400).end()
-      return
-    }
-
-    const unpaidAmount = await Job.sum('price', {
-      include: {
-        model: Contract,
-        where: { ClientId: recipientId },
-      },
-      where: {
-        paid: null,
-      },
-    })
-
-    if (amount > unpaidAmount * 0.25) {
-      res.status(400).end()
-      return
-    }
-
-    const user = await Profile.findOne({
-      where: { id: recipientId },
-    })
-
-    user.balance = user.balance + amount
-    await user.save()
-    res.json(user)
-  } catch (e) {
-    console.error(e, e.message)
-    res.status(500).end()
-  }
-})
+router.post('/deposit/:id', getProfile, createDeposit)
 
 module.exports = router
