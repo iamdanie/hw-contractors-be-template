@@ -180,6 +180,10 @@ app.post('/balances/deposit/:id', getProfile, async (req, res) => {
   }
 })
 
+/**
+ *
+ * @returns the profession that earned the most money (sum of jobs paid) for any contactor that worked in the query time range
+ */
 app.get('/admin/best-profession', getProfile, async (req, res) => {
   const { Contract, Job, Profile } = req.app.get('models')
   const { start, end } = req.query || {}
@@ -225,6 +229,10 @@ app.get('/admin/best-profession', getProfile, async (req, res) => {
   res.json(max)
 })
 
+/**
+ *
+ * @returns the clients the paid the most for jobs in the query time period. limit query parameter should be applied, default limit is 2
+ */
 app.get('/admin/best-clients', getProfile, async (req, res) => {
   const { Contract, Job, Profile } = req.app.get('models')
   const { start, end, limit = 2 } = req.query || { limit: 2 }
